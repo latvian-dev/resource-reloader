@@ -1,0 +1,17 @@
+[
+	{
+		"modid": "resourcereloader",
+		"name": "Resource Reloader",
+		"description": "",
+		"version": "${version}",
+		"mcversion": "${mcversion}",
+		"url": "https://minecraft.curseforge.com/projects/resource-reloader",
+		"updateUrl": "",
+		"authorList": ["LatvianModder", "modmuss50"],
+		"credits": "",
+		"logoFile": "assets/resourcereloader/textures/logo.png",
+		"screenshots": [],
+		"parent": "",
+		"dependencies": []
+	}
+]

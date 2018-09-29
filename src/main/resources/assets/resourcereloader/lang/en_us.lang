@@ -1,0 +1,9 @@
+command.resourcereloader.usage=/resourcereloader <subcommand>
+
+command.resourcereloader.registry.usage=/resourcereloader registry <registry>
+command.resourcereloader.registry.no_id=Registry not found!
+command.resourcereloader.registry.reloaded=Registry '%s' reloaded in %s!
+
+command.resourcereloader.texture.usage=/resourcereloader texture <texture>
+command.resourcereloader.texture.no_id=Missing texture ID! Example: modid:path/to/texture.png
+command.resourcereloader.texture.reloaded=Texture reloaded!

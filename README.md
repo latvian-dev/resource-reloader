@@ -1,1 +1,1 @@
-# Resource-Reloader
+# Resource Reloader [![](http://cf.way2muchnoise.eu/resource-reloader.svg)](https://minecraft.curseforge.com/projects/resource-reloader) [![](http://cf.way2muchnoise.eu/versions/resource-reloader.svg)](https://minecraft.curseforge.com/projects/resource-reloader)
