@@ -1,0 +1,5 @@
+command.reload_resources.usage=/reload_resources <name|#group|$ [id]>
+command.reload_resources.no_name=Registry-Name nicht gefunden!
+command.reload_resources.reloaded_name=Registry '%s' wurde in %s neu geladen!
+command.reload_resources.no_group=Registry-Gruppe nicht gefunden!
+command.reload_resources.reloaded_group=Registry-Gruppe '%s' wurde in %s neu geladen!
