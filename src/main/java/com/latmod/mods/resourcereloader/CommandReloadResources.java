@@ -1,6 +1,7 @@
 package com.latmod.mods.resourcereloader;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.resources.IResourceManager;
 import net.minecraft.client.resources.IResourceManagerReloadListener;
 import net.minecraft.client.resources.SimpleReloadableResourceManager;
 import net.minecraft.command.CommandBase;
@@ -12,6 +13,8 @@ import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.text.ITextComponent;
 import net.minecraft.util.text.TextComponentString;
 import net.minecraft.util.text.TextComponentTranslation;
+import net.minecraft.util.text.TextFormatting;
+import net.minecraft.util.text.event.ClickEvent;
 import net.minecraft.util.text.event.HoverEvent;
 import net.minecraftforge.client.resource.IResourceType;
 import net.minecraftforge.fml.client.FMLClientHandler;
@@ -19,17 +22,14 @@ import net.minecraftforge.fml.client.FMLClientHandler;
 import javax.annotation.Nullable;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
-import java.util.Map;
 
 /**
  * @author LatvianModder
  */
 public class CommandReloadResources extends CommandBase
 {
-	private Map<String, IResourceManagerReloadListener> cache;
-
 	@Override
 	public String getName()
 	{
@@ -41,47 +41,10 @@ public class CommandReloadResources extends CommandBase
 	{
 		if (args.length == 1)
 		{
-			List<String> list = new ArrayList<>(ResourceReloader.TYPE_MAP.keySet());
-			list.addAll(getMap().keySet());
-			list.sort(null);
-			return getListOfStringsMatchingLastWord(args, list);
+			return getListOfStringsMatchingLastWord(args, ResourceReloader.COMMAND_TAB);
 		}
 
 		return Collections.emptyList();
-	}
-
-	public Map<String, IResourceManagerReloadListener> getMap()
-	{
-		if (cache != null)
-		{
-			return cache;
-		}
-
-		cache = new HashMap<>();
-
-		for (IResourceManagerReloadListener listener : ((SimpleReloadableResourceManager) Minecraft.getMinecraft().getResourceManager()).reloadListeners)
-		{
-			String id = ResourceReloader.LISTENER_NAME_MAP.get(listener.getClass());
-
-			if (id == null)
-			{
-				String className = listener.getClass().getName();
-				int ci = className.lastIndexOf('.');
-				id = (ci < 0 ? className : className.substring(ci + 1)).replace('$', '_').toLowerCase();
-
-				if (id.contains("/"))
-				{
-					id = "";
-				}
-			}
-
-			if (!id.isEmpty())
-			{
-				cache.put(id, listener);
-			}
-		}
-
-		return cache;
 	}
 
 	@Override
@@ -92,61 +55,116 @@ public class CommandReloadResources extends CommandBase
 			throw new WrongUsageException("command.reload_resources.usage");
 		}
 
-		if (args[0].startsWith("#"))
+		if (args[0].equals("$"))
 		{
-			IResourceType type = ResourceReloader.TYPE_MAP.get(args[0].substring(1));
+			if (args.length < 2)
+			{
+				sender.sendMessage(new TextComponentString("---"));
+				HashSet<String> set = new HashSet<>();
+
+				for (IResourceManagerReloadListener listener : ((SimpleReloadableResourceManager) Minecraft.getMinecraft().getResourceManager()).reloadListeners)
+				{
+					String className = listener.getClass().getName();
+
+					if (!className.contains("$$"))
+					{
+						set.add(className);
+					}
+				}
+
+				List<String> list = new ArrayList<>(set);
+				list.sort(null);
+
+				for (String className : list)
+				{
+					int idx = className.lastIndexOf('.');
+					ITextComponent c = new TextComponentString(className.substring(0, idx) + ".");
+					c.getStyle().setColor(TextFormatting.GRAY);
+					ITextComponent c2 = new TextComponentString(className.substring(idx + 1));
+					c2.getStyle().setColor(TextFormatting.WHITE);
+					c.appendSibling(c2);
+					c.getStyle().setClickEvent(new ClickEvent(ClickEvent.Action.SUGGEST_COMMAND, "/reload_resources $ " + className));
+					sender.sendMessage(c);
+				}
+
+				sender.sendMessage(new TextComponentString("---"));
+			}
+			else
+			{
+				Class clazz = null;
+
+				try
+				{
+					clazz = Class.forName(args[1]);
+				}
+				catch (Exception ex)
+				{
+					ex.printStackTrace();
+				}
+
+				if (clazz == null)
+				{
+					throw new CommandException("command.reload_resources.no_name");
+				}
+
+				long start = System.currentTimeMillis();
+				IResourceManager manager = Minecraft.getMinecraft().getResourceManager();
+
+				for (IResourceManagerReloadListener listener : ((SimpleReloadableResourceManager) Minecraft.getMinecraft().getResourceManager()).reloadListeners)
+				{
+					if (listener.getClass() == clazz)
+					{
+						listener.onResourceManagerReload(manager);
+					}
+				}
+
+				long time = System.currentTimeMillis() - start;
+				String t = time < 1000L ? (time + "ms") : String.format("%.02fs", time / 1000D);
+				sender.sendMessage(new TextComponentTranslation("command.reload_resources.reloaded_name", args[1], t));
+			}
+		}
+		else if (args[0].startsWith("#"))
+		{
+			String group = args[0].substring(1).trim();
+			IResourceType type = ResourceReloader.GROUP_MAP.get(group);
 
 			if (type == null)
 			{
-				throw new CommandException("command.reload_resources.no_type");
+				throw new CommandException("command.reload_resources.no_group");
 			}
 
 			long start = System.currentTimeMillis();
 			FMLClientHandler.instance().refreshResources(type);
 			long time = System.currentTimeMillis() - start;
-
-			String t;
-
-			if (time < 1000L)
-			{
-				t = time + "ms";
-			}
-			else
-			{
-				t = String.format("%.02fs", time / 1000D);
-			}
-
-			ITextComponent n = new TextComponentString(args[0].substring(1));
+			String t = time < 1000L ? (time + "ms") : String.format("%.02fs", time / 1000D);
+			ITextComponent n = new TextComponentString(group);
 			n.getStyle().setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new TextComponentString(type.getClass().getName())));
-			sender.sendMessage(new TextComponentTranslation("command.reload_resources.reloaded_type", n, t));
+			sender.sendMessage(new TextComponentTranslation("command.reload_resources.reloaded_group", n, t));
 		}
 		else
 		{
-			cache = null;
-			IResourceManagerReloadListener listener = getMap().get(args[0]);
+			Class clazz = ResourceReloader.LISTENER_NAME_MAP.get(args[0]);
 
-			if (listener == null)
+			if (clazz == null)
 			{
 				throw new CommandException("command.reload_resources.no_name");
 			}
 
 			long start = System.currentTimeMillis();
-			listener.onResourceManagerReload(Minecraft.getMinecraft().getResourceManager());
+			IResourceManager manager = Minecraft.getMinecraft().getResourceManager();
+
+			for (IResourceManagerReloadListener listener : ((SimpleReloadableResourceManager) Minecraft.getMinecraft().getResourceManager()).reloadListeners)
+			{
+				if (listener.getClass() == clazz)
+				{
+					listener.onResourceManagerReload(manager);
+				}
+			}
+
 			long time = System.currentTimeMillis() - start;
-
-			String t;
-
-			if (time < 1000L)
-			{
-				t = time + "ms";
-			}
-			else
-			{
-				t = String.format("%.02fs", time / 1000D);
-			}
-
+			String t = time < 1000L ? (time + "ms") : String.format("%.02fs", time / 1000D);
 			ITextComponent n = new TextComponentString(args[0]);
-			n.getStyle().setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new TextComponentString(listener.getClass().getName())));
+			n.getStyle().setHoverEvent(new HoverEvent(HoverEvent.Action.SHOW_TEXT, new TextComponentString(clazz.getName())));
 			sender.sendMessage(new TextComponentTranslation("command.reload_resources.reloaded_name", n, t));
 		}
 	}

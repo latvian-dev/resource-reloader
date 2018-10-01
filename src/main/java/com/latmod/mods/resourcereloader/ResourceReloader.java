@@ -1,21 +1,27 @@
 package com.latmod.mods.resourcereloader;
 
-import net.minecraft.client.audio.SoundHandler;
-import net.minecraft.client.renderer.EntityRenderer;
-import net.minecraft.client.renderer.block.model.ModelManager;
-import net.minecraft.client.renderer.texture.TextureManager;
-import net.minecraft.client.resources.FoliageColorReloadListener;
-import net.minecraft.client.resources.GrassColorReloadListener;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.resources.IResource;
+import net.minecraft.client.resources.IResourceManager;
 import net.minecraft.client.resources.IResourceManagerReloadListener;
-import net.minecraft.client.resources.LanguageManager;
+import net.minecraft.util.ResourceLocation;
 import net.minecraftforge.client.ClientCommandHandler;
-import net.minecraftforge.client.CloudRenderer;
 import net.minecraftforge.client.resource.IResourceType;
-import net.minecraftforge.client.resource.VanillaResourceType;
 import net.minecraftforge.fml.common.Mod;
-import net.minecraftforge.fml.common.event.FMLPreInitializationEvent;
+import net.minecraftforge.fml.common.event.FMLPostInitializationEvent;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.lang.reflect.Field;
+import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -33,37 +39,106 @@ public class ResourceReloader
 	public static final String MOD_ID = "resourcereloader";
 	public static final String MOD_NAME = "Resource Reloader";
 	public static final String VERSION = "0.0.0.resourcereloader";
+	public static final Logger LOGGER = LogManager.getLogger(MOD_NAME);
 
-	public static final Map<String, IResourceType> TYPE_MAP = new HashMap<>();
-	public static final Map<Class, String> LISTENER_NAME_MAP = new HashMap<>();
-
-	public static void addType(String name, IResourceType type)
-	{
-		TYPE_MAP.put("#" + name, type);
-	}
-
-	public static void addListenerMapping(Class<? extends IResourceManagerReloadListener> listener, String name)
-	{
-		LISTENER_NAME_MAP.put(listener, name);
-	}
+	public static final Map<String, IResourceType> GROUP_MAP = new HashMap<>();
+	public static final Map<String, Class> LISTENER_NAME_MAP = new HashMap<>();
+	public static final List<String> COMMAND_TAB = new ArrayList<>();
 
 	@Mod.EventHandler
-	public void onPreInit(FMLPreInitializationEvent event)
+	public void onPostInit(FMLPostInitializationEvent event)
 	{
-		for (VanillaResourceType type : VanillaResourceType.values())
+		IResourceManager manager = Minecraft.getMinecraft().getResourceManager();
+
+		Map<String, String> groups = new HashMap<>();
+		Map<String, String> listeners = new HashMap<>();
+
+		for (String domain : manager.getResourceDomains())
 		{
-			addType(type.name().toLowerCase(), type);
+			try
+			{
+				for (IResource resource : Minecraft.getMinecraft().getResourceManager().getAllResources(new ResourceLocation(domain, "resource_reloader.json")))
+				{
+					try (InputStream stream = resource.getInputStream())
+					{
+						JsonElement element = new JsonParser().parse(new InputStreamReader(stream, StandardCharsets.UTF_8));
+
+						if (element instanceof JsonObject)
+						{
+							JsonObject json = element.getAsJsonObject();
+
+							if (json.has("groups"))
+							{
+								for (Map.Entry<String, JsonElement> entry : json.get("groups").getAsJsonObject().entrySet())
+								{
+									groups.put(entry.getKey(), entry.getValue().getAsString());
+								}
+							}
+
+							if (json.has("listeners"))
+							{
+								for (Map.Entry<String, JsonElement> entry : json.get("listeners").getAsJsonObject().entrySet())
+								{
+									listeners.put(entry.getKey(), entry.getValue().getAsString());
+								}
+							}
+						}
+					}
+				}
+			}
+			catch (Exception ex)
+			{
+			}
 		}
 
-		addListenerMapping(LanguageManager.class, "lang");
-		addListenerMapping(TextureManager.class, "textures");
-		addListenerMapping(SoundHandler.class, "sounds");
-		addListenerMapping(ModelManager.class, "models");
-		addListenerMapping(FoliageColorReloadListener.class, "foliage");
-		addListenerMapping(GrassColorReloadListener.class, "grass");
-		addListenerMapping(CloudRenderer.class, "clouds");
-		addListenerMapping(EntityRenderer.class, "shaders");
+		for (Map.Entry<String, String> entry : groups.entrySet())
+		{
+			try
+			{
+				int idx = entry.getValue().lastIndexOf('.');
+				Class clazz = Class.forName(entry.getValue().substring(0, idx));
+				Field field = clazz.getField(entry.getValue().substring(idx + 1));
+				Object object = field.get(null);
 
+				if (object instanceof IResourceType)
+				{
+					GROUP_MAP.put(entry.getKey().trim().toLowerCase(), (IResourceType) object);
+				}
+			}
+			catch (Exception ex)
+			{
+				ex.printStackTrace();
+			}
+		}
+
+		for (Map.Entry<String, String> entry : listeners.entrySet())
+		{
+			try
+			{
+				Class clazz = Class.forName(entry.getValue());
+
+				if (IResourceManagerReloadListener.class.isAssignableFrom(clazz))
+				{
+					LISTENER_NAME_MAP.put(entry.getKey().trim().toLowerCase(), clazz);
+				}
+			}
+			catch (Exception ex)
+			{
+				ex.printStackTrace();
+			}
+		}
+
+		COMMAND_TAB.addAll(LISTENER_NAME_MAP.keySet());
+
+		for (String s : GROUP_MAP.keySet())
+		{
+			COMMAND_TAB.add('#' + s);
+		}
+
+		COMMAND_TAB.sort(null);
+		COMMAND_TAB.add("$");
+
+		LOGGER.info("Loaded " + groups.size() + " groups and " + LISTENER_NAME_MAP.size() + " reload listeners");
 		ClientCommandHandler.instance.registerCommand(new CommandReloadResources());
 	}
 }

@@ -1,0 +1,24 @@
+{
+	"groups": {
+		"models": "net.minecraftforge.client.resource.VanillaResourceType.MODELS",
+		"textures": "net.minecraftforge.client.resource.VanillaResourceType.TEXTURES",
+		"sounds": "net.minecraftforge.client.resource.VanillaResourceType.SOUNDS",
+		"languages": "net.minecraftforge.client.resource.VanillaResourceType.LANGUAGES",
+		"shaders": "net.minecraftforge.client.resource.VanillaResourceType.SHADERS"
+	},
+	"listeners": {
+		"models": "net.minecraft.client.renderer.block.model.ModelManager",
+		"textures": "net.minecraft.client.renderer.texture.TextureManager",
+		"sounds": "net.minecraft.client.audio.SoundHandler",
+		"languages": "net.minecraft.client.resources.LanguageManager",
+		"shaders": "net.minecraft.client.renderer.EntityRenderer",
+		"foliage": "net.minecraft.client.resources.FoliageColorReloadListener",
+		"grass": "net.minecraft.client.resources.GrassColorReloadListener",
+		"clouds": "net.minecraftforge.client.CloudRenderer",
+		"search_tree": "net.minecraft.client.util.SearchTreeManager",
+		"fluid_textures": "net.minecraft.client.renderer.BlockRendererDispatcher",
+		"block_destroy_textures": "net.minecraft.client.renderer.RenderGlobal",
+		"item_models": "net.minecraft.client.renderer.RenderItem",
+		"fonts": "net.minecraft.client.gui.FontRenderer"
+	}
+}
