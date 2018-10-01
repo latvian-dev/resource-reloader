@@ -37,6 +37,12 @@ public class CommandReloadResources extends CommandBase
 	}
 
 	@Override
+	public List<String> getAliases()
+	{
+		return Collections.singletonList("rr");
+	}
+
+	@Override
 	public final List<String> getTabCompletions(MinecraftServer server, ICommandSender sender, String[] args, @Nullable BlockPos targetPos)
 	{
 		if (args.length == 1)
