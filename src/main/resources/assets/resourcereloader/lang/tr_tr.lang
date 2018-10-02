@@ -1,0 +1,6 @@
+### Translated by RoCoKo
+command.reload_resources.usage=/reload_resources <name|#group|$ [id]>
+command.reload_resources.no_name=Registry ismi bulunamadı!
+command.reload_resources.reloaded_name=Registry '%s' %s içinde yeniden yüklendi!
+command.reload_resources.no_group=Registry grubu bulunamadı!
+command.reload_resources.reloaded_group=Registry grubu '%s' %s içinde yeniden yüklendi!
